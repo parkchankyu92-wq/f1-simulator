@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>🏎️ 차량 경주 시뮬레이션</title>
+    <style>
+        /* 기본 스타일 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background-color: #f4f7f6;
+            padding: 20px;
+        }
+
+        /* 경주 트랙 */
+        .race-track {
+            width: 95%; /* 트랙 너비 확대 */
+            height: 150px; /* 트랙 높이 */
+            margin: 30px auto;
+            background-color: #383838; /* 아스팔트 느낌 */
+            border: 5px solid #a3a3a3;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden; /* 자동차가 밖으로 나가지 않게 */
+            border-radius: 10px;
+        }
+
+        /* 경주 차량 (CSS로 모양 만들기) */
+        .vehicle {
+            /* 자동차 본체 */
+            width: 60px; /* 크기 확대 */
+            height: 30px;
+            background-color: #e74c3c;
+            color: white;
+            font-size: 10px; /* 글자 크기 조정 */
+            font-weight: bold;
+            line-height: 30px;
+            padding-left: 5px; /* 글자를 왼쪽(앞)으로 배치하여 겹침 방지 */
+            box-sizing: border-box;
+            position: absolute;
+            left: 0;
+            transition: background-color 0.3s;
+            border-radius: 5px 15px 15px 5px; /* 약간의 곡선 */
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
+            z-index: 10; /* 결승선 위로 올라오게 */
+        }
+
+        /* 자동차 창문 효과 */
+        .vehicle::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 15px;
+            width: 10px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        /* 개별 차량 색상 및 위치 */
+        #car1 { background-color: #e74c3c; top: 10px; } /* 빨간색 */
+        #car2 { background-color: #3498db; top: 60px; } /* 파란색 (간격 조정) */
+        #car3 { background-color: #2ecc71; top: 110px; } /* 초록색 (간격 조정) */
+
+        /* 우승 차량 강조 */
+        .winner {
+            background-color: gold !important;
+            color: black !important;
+            box-shadow: 0 0 10px 3px gold;
+        }
+
+        /* 결승선 (체크무늬 깃발 스타일) */
+        .finish-line {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 20px; /* 너비 조정 */
+            /* 체크무늬 패턴 (바둑판) */
+            background-image: linear-gradient(45deg, #000 25%, transparent 25%),
+                              linear-gradient(-45deg, #000 25%, transparent 25%),
+                              linear-gradient(45deg, transparent 75%, #000 75%),
+                              linear-gradient(-45deg, transparent 75%, #000 75%);
+            background-size: 10px 10px; /* 패턴 크기 */
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            border-left: 2px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            color: #fff;
+            text-orientation: mixed;
+            writing-mode: vertical-rl; /* FINISH 글자 세로로 */
+            z-index: 5;
+        }
+
+        /* 결과 표시 */
+        #result {
+            margin-top: 30px;
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #2c3e50;
+            min-height: 40px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #2980b9;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>🏎️ 깔끔한 경주 시뮬레이션</h2>
+    <div id="raceTrack" class="race-track">
+        <div id="car1" class="vehicle">CAR 1</div>
+        <div id="car2" class="vehicle">CAR 2</div>
+        <div id="car3" class="vehicle">CAR 3</div>
+        <div class="finish-line">FINISH</div> 
+    </div>
+    
+    <p>경주를 시작하려면 버튼을 누르세요.</p>
+    <button id="startButton">경주 시작!</button>
+    <div id="result"></div>
+
+    <script>
+        // JavaScript: 게임 로직
+        const vehicles = [
+            { id: 'car1', position: 0 },
+            { id: 'car2', position: 0 },
+            { id: 'car3', position: 0 }
+        ];
+        // 경주 완료 거리 (트랙 너비 - 차량 너비 60px - 결승선 너비 20px)
+        const RACE_DISTANCE_ADJUSTMENT = 60 + 20; 
+        const RACE_DISTANCE = document.getElementById('raceTrack').offsetWidth - RACE_DISTANCE_ADJUSTMENT; 
+        const startButton = document.getElementById('startButton');
+        const resultDisplay = document.getElementById('result');
+        let isRacing = false;
+        let raceInterval;
+
+        // 차량을 무작위로 이동시키는 함수
+        function moveCar(car) {
+            // 1~10 픽셀 사이의 무작위 거리를 생성
+            const randomMove = Math.floor(Math.random() * 10) + 1;
+            car.position += randomMove;
+
+            // 위치가 경주 거리를 초과하지 않도록 조정
+            if (car.position >= RACE_DISTANCE) {
+                car.position = RACE_DISTANCE;
+            }
+            
+            // DOM 요소에 새 위치 적용
+            document.getElementById(car.id).style.left = car.position + 'px';
+
+            // 우승자 체크
+            if (car.position >= RACE_DISTANCE) {
+                return car; // 우승 차량 반환
+            }
+            return null;
+        }
+
+        // 경주를 진행하는 메인 함수
+        function startRace() {
+            if (isRacing) return;
+            isRacing = true;
+            startButton.disabled = true;
+            resultDisplay.textContent = "경주 진행 중...";
+
+            // 차량 위치 초기화 및 클래스 제거
+            vehicles.forEach(car => {
+                car.position = 0;
+                document.getElementById(car.id).style.left = '0px';
+                document.getElementById(car.id).classList.remove('winner');
+            });
+            
+            // 50ms마다 차량을 이동시키는 인터벌 설정 (게임 루프)
+            raceInterval = setInterval(() => {
+                let winner = null;
+                
+                // 모든 차량 이동
+                // **주의:** 우승자가 동시에 나올 수 있으므로, 루프를 한 번만 돌리고 처음 발견된 우승자를 최종 우승자로 처리합니다.
+                for (let i = 0; i < vehicles.length; i++) {
+                    const finishedCar = moveCar(vehicles[i]);
+                    if (finishedCar) {
+                        // 경주 거리 초과 후 최종 위치 보정 (결승선에 정확히 멈추도록)
+                        document.getElementById(finishedCar.id).style.left = RACE_DISTANCE + 'px';
+                        winner = finishedCar;
+                        break; 
+                    }
+                }
+
+                // 우승자가 있으면 경주 종료
+                if (winner) {
+                    clearInterval(raceInterval);
+                    isRacing = false;
+                    startButton.disabled = false;
+                    
+                    document.getElementById(winner.id).classList.add('winner');
+                    resultDisplay.textContent = `🏆 ${winner.id}가(이) 우승했습니다!`;
+                }
+
+            }, 50); // 0.05초마다 업데이트
+
+        }
+
+        // 시작 버튼 이벤트 리스너
+        startButton.addEventListener('click', startRace);
+        
+        // 창 크기 조정 시 RACE_DISTANCE를 다시 계산
+        window.addEventListener('resize', () => {
+            if (!isRacing) {
+                const newRaceDistance = document.getElementById('raceTrack').offsetWidth - RACE_DISTANCE_ADJUSTMENT;
+                // RACE_DISTANCE = newRaceDistance; // 전역 변수 업데이트가 필요할 경우 사용
+            }
+        });
+        
+    </script>
+</body>
+</html>
