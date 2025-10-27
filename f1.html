@@ -127,16 +127,16 @@
 </head>
 <body>
 
-    <h2>🏎️ 깔끔한 경주 시뮬레이션</h2>
+    <h2>🏎️ F1 시뮬레이션</h2>
     <div id="raceTrack" class="race-track">
-        <div id="car1" class="vehicle">CAR 1</div>
-        <div id="car2" class="vehicle">CAR 2</div>
-        <div id="car3" class="vehicle">CAR 3</div>
+        <div id="car1" class="vehicle">RED</div>
+        <div id="car2" class="vehicle">BLUE</div>
+        <div id="car3" class="vehicle">GREEN</div>
         <div class="finish-line">FINISH</div> 
     </div>
     
-    <p>경주를 시작하려면 버튼을 누르세요.</p>
-    <button id="startButton">경주 시작!</button>
+    <p>레이스를 시작하려면 버튼을 누르세요.</p>
+    <button id="startButton">G O</button>
     <div id="result"></div>
 
     <script>
@@ -180,7 +180,7 @@
             if (isRacing) return;
             isRacing = true;
             startButton.disabled = true;
-            resultDisplay.textContent = "경주 진행 중...";
+            resultDisplay.textContent = "레이스 진행 중...";
 
             // 차량 위치 초기화 및 클래스 제거
             vehicles.forEach(car => {
@@ -210,9 +210,14 @@
                     clearInterval(raceInterval);
                     isRacing = false;
                     startButton.disabled = false;
+
+                    // 우승 차량의 DOM 요소와 텍스트(RED, BLUE, GREEN)를 가져옴
+                    const winnerElement = document.getElementById(winner.id);
+                    const winnerName = winnerElement.textContent; // "RED", "BLUE", "GREEN" 중 하나
                     
-                    document.getElementById(winner.id).classList.add('winner');
-                    resultDisplay.textContent = `🏆 ${winner.id}가(이) 우승했습니다!`;
+                    winnerElement.classList.add('winner');
+                // 우승 차량 이름(색상)으로 결과 메시지 업데이트
+                resultDisplay.textContent = `🏆 ${winnerName}가(이) 우승했습니다!`;
                 }
 
             }, 50); // 0.05초마다 업데이트
